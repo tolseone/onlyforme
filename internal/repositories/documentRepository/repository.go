@@ -6,6 +6,6 @@ import (
 )
 
 type DocumentRepository interface {
-	Upsert(ctx context.Context, doc domain.TDocument) (aggregatedDoc *domain.TDocument, updated bool, err error)
-	GetByURL(ctx context.Context, url string) (*domain.TDocument, error)
+	// ComputeAggregated - точнее отражает суть операции
+	ComputeAggregated(ctx context.Context, doc domain.Document) (aggregatedDoc *domain.Document, updated bool, err error)
 }

@@ -24,7 +24,7 @@ func NewMemoryRepository() DocumentRepository {
 	}
 }
 
-func (m *MemoryRepository) Upsert(ctx context.Context, doc domain.TDocument) (*domain.TDocument, bool, error) {
+func (m *MemoryRepository) ComputeAggregated(ctx context.Context, doc domain.TDocument) (*domain.TDocument, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

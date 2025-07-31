@@ -1,0 +1,143 @@
+package document
+
+// Document - более точное название, TDocument избыточно
+type Document struct {
+    URL            string // Аббревиатуры в Go пишутся в верхнем регистре
+    PublishDate    uint64 // Более понятное название
+    FetchTime      uint64
+    Content        string // "Text" слишком общее
+    FirstFetchTime uint64
+}
+---------------------------------------------------------------------------------
+package repository
+
+import (
+    "context"
+    "qwerty/internal/domain/document"
+)
+
+// DocumentRepository - уточнение что работаем с документами
+type DocumentRepository interface {
+    // ComputeAggregated - точнее отражает суть операции
+    ComputeAggregated(ctx context.Context, doc document.Document) (*document.Document, bool, error)
+}
+
+---------------------------------------------------------------------------------
+package repository
+
+import (
+    "context"
+    "qwerty/internal/domain/document"
+    "sync"
+)
+
+// documentGroupState - состояние группы документов
+type documentGroupState struct {
+    firstFetchTime uint64
+    publishDate    uint64
+    latestDocument document.Document
+}
+
+// MemoryRepository - уточнение типа хранилища
+type MemoryRepository struct {
+    mu     sync.RWMutex
+    groups map[string]*documentGroupState // "groups" вместо "state"
+}
+
+func NewMemoryRepository() *MemoryRepository {
+    return &MemoryRepository{
+        groups: make(map[string]*documentGroupState),
+    }
+}
+
+func (m *MemoryRepository) ComputeAggregated(
+    ctx context.Context,
+    doc document.Document,
+) (*document.Document, bool, error) {
+
+    m.mu.Lock()
+    defer m.mu.Unlock()
+
+    group, exists := m.groups[doc.URL]
+
+    // Первый документ для URL
+    if !exists {
+        m.groups[doc.URL] = &documentGroupState{
+            firstFetchTime: doc.FetchTime,
+            publishDate:    doc.PublishDate,
+            latestDocument: doc,
+        }
+
+        return &document.Document{
+            URL:            doc.URL,
+            PublishDate:    doc.PublishDate,
+            FetchTime:      doc.FetchTime,
+            Content:        doc.Content,
+            FirstFetchTime: doc.FetchTime,
+        }, true, nil
+    }
+
+    updated := false
+
+    // Обновление самой ранней версии
+    if doc.FetchTime < group.firstFetchTime {
+        group.firstFetchTime = doc.FetchTime
+        group.publishDate = doc.PublishDate
+        updated = true
+    }
+
+    // Обновление последней версии
+    if doc.FetchTime > group.latestDocument.FetchTime {
+        group.latestDocument = doc
+        updated = true
+    }
+
+    if !updated {
+        return nil, false, nil
+    }
+
+    // Формируем агрегированный документ
+    return &document.Document{
+        URL:            doc.URL,
+        PublishDate:    group.publishDate,
+        FetchTime:      group.latestDocument.FetchTime,
+        Content:        group.latestDocument.Content,
+        FirstFetchTime: group.firstFetchTime,
+    }, true, nil
+}
+---------------------------------------------------------------------------------
+
+package processor
+
+import (
+    "context"
+    "qwerty/internal/domain/document"
+    "qwerty/internal/repository"
+)
+
+// DocumentProcessor - более точное название
+type DocumentProcessor struct {
+    repo repository.DocumentRepository
+}
+
+func NewDocumentProcessor(repo repository.DocumentRepository) *DocumentProcessor {
+    return &DocumentProcessor{repo: repo}
+}
+
+// Process - соответствует интерфейсу из условия
+func (p *DocumentProcessor) Process(
+    ctx context.Context,
+    doc document.Document,
+) (*document.Document, error) {
+
+    aggregated, updated, err := p.repo.ComputeAggregated(ctx, doc)
+    if err != nil {
+        return nil, err
+    }
+
+    if !updated {
+        return nil, nil
+    }
+
+    return aggregated, nil
+}

@@ -18,8 +18,9 @@ func TestProcess(t *testing.T) {
 		input    domain.TDocument
 		expected *domain.TDocument
 	}{
+		// Основные сценарии для url1
 		{
-			name: "First document for URL",
+			name: "First document for URL1",
 			input: domain.TDocument{
 				Url:       "url1",
 				PubDate:   100,
@@ -35,7 +36,7 @@ func TestProcess(t *testing.T) {
 			},
 		},
 		{
-			name: "Newer version",
+			name: "Newer version for URL1",
 			input: domain.TDocument{
 				Url:       "url1",
 				PubDate:   200,
@@ -51,7 +52,7 @@ func TestProcess(t *testing.T) {
 			},
 		},
 		{
-			name: "Older version",
+			name: "Older version for URL1",
 			input: domain.TDocument{
 				Url:       "url1",
 				PubDate:   50,
@@ -67,24 +68,102 @@ func TestProcess(t *testing.T) {
 			},
 		},
 		{
-			name: "Middle version - no update",
+			name: "Middle version for URL1 - no update",
 			input: domain.TDocument{
 				Url:       "url1",
-				PubDate:   100,
+				PubDate:   150,
 				FetchTime: 150,
 				Text:      "MiddleText",
 			},
 			expected: nil,
 		},
 		{
-			name: "Duplicate FetchTime - no update",
+			name: "Duplicate FetchTime for URL1 - no update",
 			input: domain.TDocument{
 				Url:       "url1",
 				PubDate:   200,
 				FetchTime: 200,
 				Text:      "Duplicate",
 			},
-			expected: nil, // Не должно быть обновления
+			expected: nil,
+		},
+
+		// Сценарии для другого URL (url2)
+		{
+			name: "First document for URL2",
+			input: domain.TDocument{
+				Url:       "url2",
+				PubDate:   300,
+				FetchTime: 300,
+				Text:      "URL2 Text1",
+			},
+			expected: &domain.TDocument{
+				Url:            "url2",
+				PubDate:        300,
+				FetchTime:      300,
+				Text:           "URL2 Text1",
+				FirstFetchTime: 300,
+			},
+		},
+		{
+			name: "Newer version for URL2",
+			input: domain.TDocument{
+				Url:       "url2",
+				PubDate:   400,
+				FetchTime: 400,
+				Text:      "URL2 Text2",
+			},
+			expected: &domain.TDocument{
+				Url:            "url2",
+				PubDate:        300,
+				FetchTime:      400,
+				Text:           "URL2 Text2",
+				FirstFetchTime: 300,
+			},
+		},
+		{
+			name: "URL1 remains unchanged after URL2 updates",
+			input: domain.TDocument{
+				Url:       "url1",
+				PubDate:   200,
+				FetchTime: 200,
+				Text:      "Duplicate",
+			},
+			expected: nil, // Проверяем, что URL1 не изменился
+		},
+
+		// Специальные сценарии
+		{
+			name: "New URL with FetchTime between existing URLs",
+			input: domain.TDocument{
+				Url:       "url3",
+				PubDate:   250,
+				FetchTime: 250,
+				Text:      "URL3 Text",
+			},
+			expected: &domain.TDocument{
+				Url:            "url3",
+				PubDate:        250,
+				FetchTime:      250,
+				Text:           "URL3 Text",
+				FirstFetchTime: 250,
+			},
+		},
+		{
+			name: "Empty text update",
+			input: domain.TDocument{
+				Url:       "url1",
+				PubDate:   500,
+				FetchTime: 500,
+				Text:      "", // Пустой текст
+			},
+			expected: &domain.TDocument{
+				Url:            "url1",
+				PubDate:        50,  // Сохраняется минимальный
+				FetchTime:      500, // Новый максимум
+				Text:           "",  // Пустой текст
+				FirstFetchTime: 50,
+			},
 		},
 	}
 

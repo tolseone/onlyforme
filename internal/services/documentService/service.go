@@ -14,8 +14,8 @@ func NewDocumentProcessor(repo documentRepository.DocumentRepository) *DocumentP
 	return &DocumentProcessor{repo: repo}
 }
 
-func (p *DocumentProcessor) Process(ctx context.Context, doc domain.TDocument) (*domain.TDocument, error) {
-	aggregatedDoc, updated, err := p.repo.Upsert(ctx, doc)
+func (p *DocumentProcessor) Process(ctx context.Context, doc domain.Document) (*domain.Document, error) {
+	aggregatedDoc, updated, err := p.repo.ComputeAggregated(ctx, doc)
 	if err != nil {
 		return nil, err
 	}
